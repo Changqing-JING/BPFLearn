@@ -1,0 +1,57 @@
+#include <linux/socket.h>
+#include <net/sock.h>
+
+
+tracepoint:syscalls:sys_enter_accept { printf("accept\n"); }
+
+tracepoint:syscalls:sys_enter_accept4 { printf("accept4\n"); }
+
+kprobe:inet_csk_accept{
+    printf("inet_csk_accept %ld\n", nsecs);
+}
+
+kretprobe:inet_csk_accept{
+
+    $sk = (struct sock*)retval;
+
+    $daddr = ntop($sk->__sk_common.skc_daddr);
+    $saddr = ntop($sk->__sk_common.skc_rcv_saddr);
+
+    $sport = $sk->__sk_common.skc_num;
+    $dport = $sk->__sk_common.skc_dport;
+
+    printf("kretprobe:inet_csk_accept pid: %d, source %16s:%5d, dist %16s:%5d\n", pid, $saddr, $sport, $daddr, $dport);
+}
+
+kprobe:tcp_connect
+{
+    //https://github.com/iovisor/bpftrace/issues/1332
+    $sk = (struct sock*)arg0;
+
+    $daddr= ntop($sk->__sk_common.skc_daddr);
+    $saddr = ntop($sk->__sk_common.skc_rcv_saddr);
+
+    $sport = $sk->__sk_common.skc_num;
+    $dport = $sk->__sk_common.skc_dport;
+
+    printf("kprobe:tcp_connect pid:%d, source %16s:%5d, dist %16s:%5d\n", pid, $saddr, $sport, $daddr, $dport);
+}
+
+kprobe:tcp_close
+{
+    printf("tcp_close\n");
+
+}
+
+kprobe:tcp_fin{
+
+    $sk = (struct sock*)arg0;
+
+    $daddr = ntop($sk->__sk_common.skc_daddr);
+    $saddr = ntop($sk->__sk_common.skc_rcv_saddr);
+
+    $sport = $sk->__sk_common.skc_num;
+    $dport = $sk->__sk_common.skc_dport;
+
+    printf("tcp_fin pid: %d, source %16s:%5d, dist %16s:%5d\n", pid, $saddr, $sport, $daddr, $dport);
+}
