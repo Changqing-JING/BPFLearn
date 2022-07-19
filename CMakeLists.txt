@@ -10,7 +10,7 @@ add_subdirectory(socket_demo)
 aux_source_directory(src/helper sourceHelpers)
 add_library(libHelper ${sourceHelpers})
 
-set(BPF_FLAG -target bpf -O1)
+set(BPF_FLAG -g -target bpf -O2)
 
 macro(add_bpf_target bpfName)
     add_custom_target(
