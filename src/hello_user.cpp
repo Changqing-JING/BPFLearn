@@ -1,30 +1,38 @@
 // SPDX-License-Identifier: GPL-2.0
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
+#include <cstdio>
+#include <cstdlib>
 #include <fcntl.h>
+#include <filesystem>
 #include <linux/filter.h>
 #include <linux/seccomp.h>
 #include <stdexcept>
-#include <stdio.h>
-#include <stdlib.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
 #include <unistd.h>
 
 int main(int ac, char **argv) {
   struct bpf_link *link = NULL;
-  struct bpf_program *prog;
+
   struct bpf_object *obj;
-  char filename[256];
+
   try {
-    snprintf(filename, sizeof(filename), "%s_kern.o", argv[0]);
-    obj = bpf_object__open_file(filename, NULL);
+    std::filesystem::path const execPath(argv[0]);
+
+    std::filesystem::path const filename = execPath.filename();
+
+    std::filesystem::path const bpfname =
+        execPath.parent_path() / (filename.string() + "_kern.o");
+
+    obj = bpf_object__open_file(bpfname.c_str(), NULL);
     if (libbpf_get_error(obj)) {
       fprintf(stderr, "ERROR: opening BPF object file failed\n");
       return 0;
     }
 
-    prog = bpf_object__find_program_by_name(obj, "bpf_prog1");
+    struct bpf_program *const prog =
+        bpf_object__find_program_by_name(obj, "bpf_prog1");
     if (!prog) {
       printf("finding a prog in obj file failed\n");
       throw std::runtime_error("bpf_object__find_program_by_name failed");
