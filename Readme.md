@@ -1,6 +1,7 @@
 ## Setup BPF development evnvironment
 ```shell
-sudo apt install flex bison libelf-dev binutils-dev libssl-dev libcap-dev gcc-multilib bpftrace bpftrace-dbgsym libbpf-dev
+sudo apt install flex bison libelf-dev binutils-dev libssl-dev libcap-dev c bpftrace bpftrace-dbgsym libbpf-dev
+sudo ln -s /usr/include/asm-generic /usr/include/asm 
 ```
 ### Build BPF hello world
 ```shell
