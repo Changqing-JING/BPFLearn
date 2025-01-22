@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <fcntl.h>
 #include <filesystem>
+#include <iostream>
 #include <linux/filter.h>
 #include <linux/seccomp.h>
 #include <stdexcept>
@@ -100,7 +101,7 @@ int main(int ac, char **argv) {
         throw std::runtime_error("bpf_map_lookup_elem failed");
       }
 
-      printf("bpf_map_lookup_elem get value %d\n", value);
+      std::cout << "bpf_map_lookup_elem get value " << value << std::endl;
     }
 
   }

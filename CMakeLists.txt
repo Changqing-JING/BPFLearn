@@ -15,7 +15,7 @@ set(BPF_FLAG -g -target bpf -O2)
 macro(add_bpf_target bpfName)
     add_custom_target(
         ${bpfName}_kern ALL
-        COMMAND clang ${BPF_FLAG} -o ${CMAKE_CURRENT_BINARY_DIR}/${bpfName}_kern.o -c ${bpfName}_kern.c
+        COMMAND clang ${BPF_FLAG} -I/usr/include/x86_64-linux-gnu -o ${CMAKE_CURRENT_BINARY_DIR}/${bpfName}_kern.o -c ${bpfName}_kern.c
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src
     )
 
