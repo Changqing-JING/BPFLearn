@@ -106,3 +106,5 @@ llc --version
 #list cpu info
 lscpu
 ```
+
+[bpf_probe_read can't read user space data](https://github.com/iovisor/bcc/issues/3898#issuecomment-1060926441)

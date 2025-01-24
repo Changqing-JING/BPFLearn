@@ -18,11 +18,11 @@ struct {
 
 SEC("uprobe///lib/x86_64-linux-gnu/libc.so.6:printf")
 int bpf_prog1(struct pt_regs *ctx) {
-  char fmt[256];
-  void *address = (void *)ctx->rdi;
-  bpf_probe_read_user(&fmt, sizeof(fmt), address);
-  bpf_printk("printf called with address %p, format string: %s\n", address,
-             fmt);
+  char fmt[20];
+  void *address = (void *)PT_REGS_PARM1(ctx);
+  int res = bpf_probe_read(&fmt, sizeof(fmt), address);
+  bpf_printk("printf called with address %lx, res %d, format string: %s\n",
+             (unsigned long)address, res, fmt);
   return 0;
 }
 char _license[] SEC("license") = "GPL";
