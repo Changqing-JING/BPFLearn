@@ -1,21 +1,33 @@
 // SPDX-License-Identifier: GPL-2.0
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
+#include "hello_event.h"
+
+#include <cerrno>
 #include <cstdio>
 #include <cstdlib>
-#include <fcntl.h>
+#include <cstddef>
 #include <filesystem>
-#include <linux/filter.h>
-#include <linux/seccomp.h>
 #include <stdexcept>
-#include <sys/prctl.h>
-#include <sys/resource.h>
-#include <unistd.h>
+
+static int handle_event(void *, void *data, size_t dataSize) {
+  if (dataSize != sizeof(hello_event)) {
+    fprintf(stderr, "ERROR: unexpected ring buffer sample size\n");
+    return 0;
+  }
+
+  auto const *event = static_cast<const hello_event *>(data);
+  printf("pid %u: %.*s count %u\n", event->pid,
+         static_cast<int>(sizeof(event->message) - 1), event->message,
+         event->count);
+  return 0;
+}
 
 int main(int ac, char **argv) {
   struct bpf_link *link = NULL;
+  struct ring_buffer *ringBuffer = NULL;
 
-  struct bpf_object *obj;
+  struct bpf_object *obj = NULL;
 
   try {
     std::filesystem::path const execPath(argv[0]);
@@ -52,6 +64,16 @@ int main(int ac, char **argv) {
       throw std::runtime_error("bpf_object__find_map_by_name failed");
     }
 
+    int const eventFd = bpf_object__find_map_fd_by_name(obj, "events");
+    if (eventFd < 0) {
+      throw std::runtime_error("bpf_object__find_map_fd_by_name failed");
+    }
+
+    ringBuffer = ring_buffer__new(eventFd, handle_event, NULL, NULL);
+    if (ringBuffer == NULL) {
+      throw std::runtime_error("ring_buffer__new failed");
+    }
+
     uint32_t const mapSize = bpf_map__max_entries(map);
 
     if (mapSize == 0) {
@@ -70,12 +92,6 @@ int main(int ac, char **argv) {
       throw std::runtime_error("bpf_program__attach failed");
     }
 
-    int32_t const trace_fd =
-        open("/sys/kernel/debug/tracing/trace_pipe", O_RDONLY, 0);
-    if (trace_fd < 0) {
-      throw std::runtime_error("open trace_pipe failed\n");
-    }
-
     int32_t error;
 
     error = bpf_map_update_elem(mapFd, &key, &value, BPF_ANY);
@@ -85,13 +101,9 @@ int main(int ac, char **argv) {
     }
 
     while (true) {
-
-      static char buf[4096];
-
-      ssize_t const sz = read(trace_fd, buf, sizeof(buf) - 1);
-      if (sz > 0) {
-        buf[sz] = 0;
-        puts(buf);
+      int const pollResult = ring_buffer__poll(ringBuffer, 100);
+      if (pollResult < 0 && pollResult != -EINTR) {
+        throw std::runtime_error("ring_buffer__poll failed");
       }
 
       error = bpf_map_lookup_elem(mapFd, &key, &value);
@@ -105,9 +117,20 @@ int main(int ac, char **argv) {
 
   }
 
-  catch (...) {
+  catch (const std::exception &exception) {
+    fprintf(stderr, "ERROR: %s\n", exception.what());
+    ring_buffer__free(ringBuffer);
     bpf_link__destroy(link);
     bpf_object__close(obj);
+    return 1;
+  }
+
+  catch (...) {
+    fprintf(stderr, "ERROR: unknown failure\n");
+    ring_buffer__free(ringBuffer);
+    bpf_link__destroy(link);
+    bpf_object__close(obj);
+    return 1;
   }
   return 0;
 }

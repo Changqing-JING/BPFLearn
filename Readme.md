@@ -94,6 +94,12 @@ llc hello_kern.ll -march=bpf -filetype=obj -o hello_kern.o
 
 ```
 
+set bpf cap to the elf file, otherwise it need to be run with root
+
+```shell
+sudo setcap cap_bpf,cap_perfmon=ep ./build/hello
+```
+
 ## Read sections of elf files
 
 ```shell
@@ -105,4 +111,10 @@ llc --version
 
 #list cpu info
 lscpu
+```
+
+check kernel symbol
+
+```shell
+cat /proc/kallsyms
 ```
